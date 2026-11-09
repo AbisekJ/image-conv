@@ -231,11 +231,51 @@ void convert(int mode, const unsigned char *in, unsigned char *out,
     }
 }
 
-/*
- * Usage: imgconv MODE -w WIDTH -H HEIGHT -i INPUT -o OUTPUT
- * argc = number of words typed, argv[] = the words themselves.
- * argv[0] is the program name, argv[1] is the mode, the rest are options.
- */
+// input validation
+
+#define MAX_DIM 8192    // biggest width/height we accept 
+
+/* Print the short usage line. */
+void print_usage(void)
+{
+    printf("Usage: imgconv MODE -w WIDTH -H HEIGHT -i INPUT -o OUTPUT\n");
+}
+
+int is_number(const char *text)
+{
+    int i = 0;
+
+    if (text[0] == '\0') {
+        return 0;                       /* empty string */
+    }
+    while (text[i] != '\0') {
+        if (text[i] < '0' || text[i] > '9') {
+            return 0;                   /* found a non-digit */
+        }
+        i++;
+    }
+    return i <= 5;                      /* i = how many characters */
+}
+
+/* Convert text to a valid width/height. Return -1 (and print why) if bad. */
+int get_dimension(const char *text, const char *name)
+{
+    int value;
+
+    if (!is_number(text)) {
+        fprintf(stderr, "Error: %s must be a whole number of 1 to 5 digits, got '%s'\n",
+                name, text);
+        return -1;
+    }
+    value = atoi(text);
+    if (value < 1 || value > MAX_DIM) {
+        fprintf(stderr, "Error: %s must be between 1 and %d, got %d\n",
+                name, MAX_DIM, value);
+        return -1;
+    }
+    return value;
+}
+
 int main(int argc, char *argv[])
 {
     int mode;
@@ -243,46 +283,111 @@ int main(int argc, char *argv[])
     int height = 0;
     const char *input_name = NULL;
     const char *output_name = NULL;
-    long in_size, out_size;
+    long file_size, in_size, out_size;
     unsigned char *in_buf, *out_buf;
     int i;
 
+    /* 1. a mode must be given and must be known */
     if (argc < 2) {
-        printf("Usage: imgconv MODE -w WIDTH -H HEIGHT -i INPUT -o OUTPUT\n");
+        fprintf(stderr, "Error: no mode given\n");
+        print_usage();
+        return 1;
+    }
+    mode = get_mode(argv[1]);
+    if (mode == MODE_UNKNOWN) {
+        fprintf(stderr, "Error: unknown mode '%s'\n", argv[1]);
         return 1;
     }
 
-    mode = get_mode(argv[1]);
-
-    for (i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "-w") == 0) {
-            i++;                         
-            width = atoi(argv[i]);       
-        } else if (strcmp(argv[i], "-H") == 0) {
-            i++;
-            height = atoi(argv[i]);
-        } else if (strcmp(argv[i], "-i") == 0) {
-            i++;
-            input_name = argv[i];
-        } else if (strcmp(argv[i], "-o") == 0) {
-            i++;
-            output_name = argv[i];
+    /* 2. read the options; every option needs a value after it */
+    i = 2;
+    while (i < argc) {
+        if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--width") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: %s needs a value\n", argv[i]);
+                return 1;
+            }
+            width = get_dimension(argv[i + 1], "width");
+            if (width < 0) {
+                return 1;
+            }
+        } else if (strcmp(argv[i], "-H") == 0 || strcmp(argv[i], "--height") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: %s needs a value\n", argv[i]);
+                return 1;
+            }
+            height = get_dimension(argv[i + 1], "height");
+            if (height < 0) {
+                return 1;
+            }
+        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: %s needs a value\n", argv[i]);
+                return 1;
+            }
+            input_name = argv[i + 1];
+        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: %s needs a value\n", argv[i]);
+                return 1;
+            }
+            output_name = argv[i + 1];
+        } else {
+            fprintf(stderr, "Error: unknown option '%s'\n", argv[i]);
+            return 1;
         }
+        i += 2;                          /* skip the option and its value */
     }
 
-    in_size  = (long)width * height * 3;
+    /* 3. everything required must be present (0 / NULL means "not given") */
+    if (width == 0 || height == 0 || input_name == NULL || output_name == NULL) {
+        fprintf(stderr, "Error: -w, -H, -i and -o are all required\n");
+        print_usage();
+        return 1;
+    }
+
+    /* 4. YUV422 and YUV420 pair up pixels, so sizes must be even */
+    if ((mode == MODE_YUV444_TO_YUV422 || mode == MODE_YUV444_TO_YUV420) &&
+        width % 2 != 0) {
+        fprintf(stderr, "Error: this mode needs an even width, got %d\n", width);
+        return 1;
+    }
+    if (mode == MODE_YUV444_TO_YUV420 && height % 2 != 0) {
+        fprintf(stderr, "Error: this mode needs an even height, got %d\n", height);
+        return 1;
+    }
+
+    /* 5. do not let the output overwrite the input */
+    if (strcmp(input_name, output_name) == 0) {
+        fprintf(stderr, "Error: input and output must be different files\n");
+        return 1;
+    }
+
+    /* 6. the input file must exist and have exactly the right size */
+    in_size   = (long)width * height * 3;
+    file_size = get_file_size(input_name);
+    if (file_size < 0) {
+        fprintf(stderr, "Error: cannot open input file '%s'\n", input_name);
+        return 1;
+    }
+    if (file_size != in_size) {
+        fprintf(stderr, "Error: input file is %ld bytes, expected %ld (%d x %d x 3)\n",
+                file_size, in_size, width, height);
+        return 1;
+    }
+
+    /* 7. allocate memory, convert, write */
     out_size = get_output_size(mode, width, height);
     in_buf   = malloc(in_size);
     out_buf  = malloc(out_size);
-
     if (in_buf == NULL || out_buf == NULL) {
-        printf("Error: out of memory\n");
+        fprintf(stderr, "Error: out of memory\n");
         free(in_buf);
         free(out_buf);
         return 1;
     }
     if (!read_file(input_name, in_buf, in_size)) {
-        printf("Error: cannot read input file\n");
+        fprintf(stderr, "Error: failed to read '%s'\n", input_name);
         free(in_buf);
         free(out_buf);
         return 1;
@@ -291,7 +396,7 @@ int main(int argc, char *argv[])
     convert(mode, in_buf, out_buf, width, height);
 
     if (!write_file(output_name, out_buf, out_size)) {
-        printf("Error: cannot write output file\n");
+        fprintf(stderr, "Error: failed to write '%s'\n", output_name);
         free(in_buf);
         free(out_buf);
         return 1;
