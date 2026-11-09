@@ -94,10 +94,10 @@ void yuv444_to_yuv422(const unsigned char *in, unsigned char *out,
             int p1 = p0 + 3;                  
             int o  = (row * width + x) * 2;   
 
-            out[o]     = in[p0];                                /* Y0 */
-            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;         /* average U */
-            out[o + 2] = in[p1];                                /* Y1 */
-            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;         /* average V */
+            out[o]     = in[p0];                                    /* Y0 */
+            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;             /* average U */
+            out[o + 2] = in[p1];                                    /* Y1 */
+            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;             /* average V */
         }
     }
 }
@@ -110,7 +110,7 @@ void yuv444_to_yuv420(const unsigned char *in, unsigned char *out,
     int v_start = total + (width / 2) * (height / 2);   /* V plane begins here */
     int row, x, i;
 
-    // Y plane
+    //Y Plane
     for (i = 0; i < total; i++) {
         out[i] = in[i * 3];
     }
@@ -130,7 +130,7 @@ void yuv444_to_yuv420(const unsigned char *in, unsigned char *out,
     }
 }
 
-//file operations 
+// File operations
 
 /* Return the size of a file in bytes, or -1 if it cannot be opened. */
 long get_file_size(const char *name)
@@ -141,7 +141,7 @@ long get_file_size(const char *name)
     if (fp == NULL) {
         return -1;
     }
-    fseek(fp, 0, SEEK_END);        
+    fseek(fp, 0, SEEK_END);         
     size = ftell(fp);               
     fclose(fp);
     return size;
@@ -164,7 +164,7 @@ int read_file(const char *name, unsigned char *buf, long size)
 /* Write exactly 'size' bytes from buf. Return 1 on success, 0 on failure. */
 int write_file(const char *name, const unsigned char *buf, long size)
 {
-    FILE *fp = fopen(name, "wb");   
+    FILE *fp = fopen(name, "wb");   /* "wb" = write, binary */
     size_t count;
 
     if (fp == NULL) {
@@ -175,15 +175,105 @@ int write_file(const char *name, const unsigned char *buf, long size)
     return count == (size_t)size;
 }
 
-#define WIDTH  4
-#define HEIGHT 4
+// Modes
 
-int main(void)
+#define MODE_UNKNOWN            0
+#define MODE_RGB888_TO_RGB565   1
+#define MODE_RGB888_TO_RGB555   2
+#define MODE_RGB888_TO_YUV444   3
+#define MODE_YUV444_TO_RGB888   4
+#define MODE_YUV444_TO_YUV422   5
+#define MODE_YUV444_TO_YUV420   6
+
+/* Turn the mode text typed by the user into a mode number. */
+int get_mode(const char *name)
 {
-    long in_size  = (long)WIDTH * HEIGHT * 3;   /* RGB888 = 3 bytes/pixel */
-    long out_size = (long)WIDTH * HEIGHT * 2;   /* RGB565 = 2 bytes/pixel */
-    unsigned char *in_buf  = malloc(in_size);
-    unsigned char *out_buf = malloc(out_size);
+    if (strcmp(name, "rgb888-to-rgb565") == 0) return MODE_RGB888_TO_RGB565;
+    if (strcmp(name, "rgb888-to-rgb555") == 0) return MODE_RGB888_TO_RGB555;
+    if (strcmp(name, "rgb888-to-yuv444") == 0) return MODE_RGB888_TO_YUV444;
+    if (strcmp(name, "yuv444-to-rgb888") == 0) return MODE_YUV444_TO_RGB888;
+    if (strcmp(name, "yuv444-to-yuv422") == 0) return MODE_YUV444_TO_YUV422;
+    if (strcmp(name, "yuv444-to-yuv420") == 0) return MODE_YUV444_TO_YUV420;
+    return MODE_UNKNOWN;
+}
+
+/* How many bytes does the output file need for this mode? */
+long get_output_size(int mode, int width, int height)
+{
+    long pixels = (long)width * height;
+
+    if (mode == MODE_RGB888_TO_RGB565 || mode == MODE_RGB888_TO_RGB555 ||
+        mode == MODE_YUV444_TO_YUV422) {
+        return pixels * 2;          /* 2 bytes per pixel */
+    }
+    if (mode == MODE_RGB888_TO_YUV444 || mode == MODE_YUV444_TO_RGB888) {
+        return pixels * 3;          /* 3 bytes per pixel */
+    }
+    return pixels * 3 / 2;          /* YUV420: 1.5 bytes per pixel */
+}
+
+/* Call the right conversion function for the chosen mode. */
+void convert(int mode, const unsigned char *in, unsigned char *out,
+             int width, int height)
+{
+    if (mode == MODE_RGB888_TO_RGB565) {
+        rgb888_to_rgb565(in, out, width, height);
+    } else if (mode == MODE_RGB888_TO_RGB555) {
+        rgb888_to_rgb555(in, out, width, height);
+    } else if (mode == MODE_RGB888_TO_YUV444) {
+        rgb888_to_yuv444(in, out, width, height);
+    } else if (mode == MODE_YUV444_TO_RGB888) {
+        yuv444_to_rgb888(in, out, width, height);
+    } else if (mode == MODE_YUV444_TO_YUV422) {
+        yuv444_to_yuv422(in, out, width, height);
+    } else if (mode == MODE_YUV444_TO_YUV420) {
+        yuv444_to_yuv420(in, out, width, height);
+    }
+}
+
+/*
+ * Usage: imgconv MODE -w WIDTH -H HEIGHT -i INPUT -o OUTPUT
+ * argc = number of words typed, argv[] = the words themselves.
+ * argv[0] is the program name, argv[1] is the mode, the rest are options.
+ */
+int main(int argc, char *argv[])
+{
+    int mode;
+    int width = 0;
+    int height = 0;
+    const char *input_name = NULL;
+    const char *output_name = NULL;
+    long in_size, out_size;
+    unsigned char *in_buf, *out_buf;
+    int i;
+
+    if (argc < 2) {
+        printf("Usage: imgconv MODE -w WIDTH -H HEIGHT -i INPUT -o OUTPUT\n");
+        return 1;
+    }
+
+    mode = get_mode(argv[1]);
+
+    for (i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-w") == 0) {
+            i++;                         
+            width = atoi(argv[i]);       
+        } else if (strcmp(argv[i], "-H") == 0) {
+            i++;
+            height = atoi(argv[i]);
+        } else if (strcmp(argv[i], "-i") == 0) {
+            i++;
+            input_name = argv[i];
+        } else if (strcmp(argv[i], "-o") == 0) {
+            i++;
+            output_name = argv[i];
+        }
+    }
+
+    in_size  = (long)width * height * 3;
+    out_size = get_output_size(mode, width, height);
+    in_buf   = malloc(in_size);
+    out_buf  = malloc(out_size);
 
     if (in_buf == NULL || out_buf == NULL) {
         printf("Error: out of memory\n");
@@ -191,23 +281,23 @@ int main(void)
         free(out_buf);
         return 1;
     }
-    if (!read_file("input.raw", in_buf, in_size)) {
-        printf("Error: cannot read input.raw\n");
+    if (!read_file(input_name, in_buf, in_size)) {
+        printf("Error: cannot read input file\n");
         free(in_buf);
         free(out_buf);
         return 1;
     }
 
-    rgb888_to_rgb565(in_buf, out_buf, WIDTH, HEIGHT);
+    convert(mode, in_buf, out_buf, width, height);
 
-    if (!write_file("output.raw", out_buf, out_size)) {
-        printf("Error: cannot write output.raw\n");
+    if (!write_file(output_name, out_buf, out_size)) {
+        printf("Error: cannot write output file\n");
         free(in_buf);
         free(out_buf);
         return 1;
     }
 
-    printf("Done: wrote %ld bytes to output.raw\n", out_size);
+    printf("Done: wrote %ld bytes to %s\n", out_size, output_name);
     free(in_buf);
     free(out_buf);
     return 0;
