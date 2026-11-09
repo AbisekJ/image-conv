@@ -10,8 +10,8 @@ void print_hex(const unsigned char *data, int count)
     printf("\n");
 }
 
-
-void rgb888_to_rgb565(const unsigned char *in, unsigned char *out, int width, int height)
+void rgb888_to_rgb565(const unsigned char *in, unsigned char *out,
+                      int width, int height)
 {
     int total = width * height;
     int i;
@@ -27,7 +27,6 @@ void rgb888_to_rgb565(const unsigned char *in, unsigned char *out, int width, in
         out[i * 2 + 1] = pixel >> 8;    /* high byte */
     }
 }
-
 
 void rgb888_to_rgb555(const unsigned char *in, unsigned char *out,
                       int width, int height)
@@ -47,6 +46,35 @@ void rgb888_to_rgb555(const unsigned char *in, unsigned char *out,
     }
 }
 
+//For proper rounding - off
+unsigned char clamp(float value)
+{
+    if (value < 0.0f) {
+        return 0;
+    }
+    if (value > 255.0f) {
+        return 255;
+    }
+    return (unsigned char)(value + 0.5f);
+}
+
+void rgb888_to_yuv444(const unsigned char *in, unsigned char *out,
+                      int width, int height)
+{
+    int total = width * height;
+    int i;
+
+    for (i = 0; i < total; i++) {
+        float r = in[i * 3];
+        float g = in[i * 3 + 1];
+        float b = in[i * 3 + 2];
+
+        out[i * 3]     = clamp( 0.299f * r + 0.587f * g + 0.114f * b);
+        out[i * 3 + 1] = clamp(-0.169f * r - 0.331f * g + 0.500f * b + 128.0f);
+        out[i * 3 + 2] = clamp( 0.500f * r - 0.419f * g - 0.081f * b + 128.0f);
+    }
+}
+
 int main(void)
 {
     /* A tiny 2x2 test image: red, green, blue, white pixels (RGB888) */
@@ -61,6 +89,11 @@ int main(void)
     rgb888_to_rgb555(rgb, out555, 2, 2);
     printf("RGB555 : ");
     print_hex(out555, 8);
+
+    unsigned char yuv[12];
+    rgb888_to_yuv444(rgb, yuv, 2, 2);
+    printf("YUV444 : ");
+    print_hex(yuv, 12);
 
     return 0;
 }
