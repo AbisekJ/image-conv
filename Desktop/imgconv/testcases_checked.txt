@@ -1,0 +1,28 @@
+In this doc i have roughly documented the inputs i checked while coding 
+
+I Built this application in following stages :
+i. Designed individual conversion functions one by one and have made commit after each progress
+ii. Wrote functions for reading and writing to file
+iii. Added command line arguments handling for all 6 modes
+iv. used AI for strict input validation
+v. added --help and --version
+vi. Made code corrections to replace all magic numbers with properly defined macros and properly renamed all variables meaningfully
+vii. Broke the code and made it modular 
+
+Validation:
+
+1. For initial validation, I used a tiny 2x2 test image: red, green, blue, white pixels (RGB888) { 255, 0, 0,   0, 255, 0,   0, 0, 255,   255, 255, 255 };
+2. head -c 48 /dev/urandom > input.raw  --> used this just randmly write 48 bytes of hex values to raw input file
+3. Then i checked by running the following and verified if errors are getting displayed properly:
+
+./imgconv                                                      # no mode
+./imgconv foo                                                  # unknown mode
+./imgconv rgb888-to-rgb565 -w                                  # option without value
+./imgconv rgb888-to-rgb565 -w abc -H 4 -i input.raw -o o.bin   # not a number
+./imgconv rgb888-to-rgb565 -w -5 -H 4 -i input.raw -o o.bin    # negative
+./imgconv rgb888-to-rgb565 -w 0 -H 4 -i input.raw -o o.bin     # zero
+./imgconv rgb888-to-rgb565 -w 9000 -H 4 -i input.raw -o o.bin  # too big
+./imgconv rgb888-to-rgb565 -w 5 -H 4 -i input.raw -o o.bin     # wrong file size
+./imgconv rgb888-to-rgb565 -w 4 -H 4 -i nofile -o o.bin        # missing file
+./imgconv yuv444-to-yuv422 -w 3 -H 4 -i input.raw -o o.bin     # odd width
+./imgconv rgb888-to-rgb565 -w 4 -H 4 -i input.raw -o input.raw # same file
