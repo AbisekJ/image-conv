@@ -28,6 +28,7 @@ void rgb888_to_rgb565(const unsigned char *in, unsigned char *out,
     }
 }
 
+
 void rgb888_to_rgb555(const unsigned char *in, unsigned char *out,
                       int width, int height)
 {
@@ -58,7 +59,6 @@ unsigned char clamp(float value)
     return (unsigned char)(value + 0.5f);
 }
 
-
 void rgb888_to_yuv444(const unsigned char *in, unsigned char *out,
                       int width, int height)
 {
@@ -76,7 +76,6 @@ void rgb888_to_yuv444(const unsigned char *in, unsigned char *out,
     }
 }
 
-
 void yuv444_to_rgb888(const unsigned char *in, unsigned char *out,
                       int width, int height)
 {
@@ -91,6 +90,25 @@ void yuv444_to_rgb888(const unsigned char *in, unsigned char *out,
         out[i * 3]     = clamp(y + 1.402f * v);
         out[i * 3 + 1] = clamp(y - 0.344f * u - 0.714f * v);
         out[i * 3 + 2] = clamp(y + 1.772f * u);
+    }
+}
+
+void yuv444_to_yuv422(const unsigned char *in, unsigned char *out,
+                      int width, int height)
+{
+    int row, x;
+
+    for (row = 0; row < height; row++) {
+        for (x = 0; x < width; x += 2) {
+            int p0 = (row * width + x) * 3;   
+            int p1 = p0 + 3;                 
+            int o  = (row * width + x) * 2;   
+
+            out[o]     = in[p0];                         /* Y0 */
+            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;  /* average U */
+            out[o + 2] = in[p1];                         /* Y1 */
+            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;  /* average V */
+        }
     }
 }
 
@@ -118,6 +136,11 @@ int main(void)
     yuv444_to_rgb888(yuv, back, 2, 2);
     printf("RGB888 : ");
     print_hex(back, 12);
+
+    unsigned char yuv422[8];
+    yuv444_to_yuv422(yuv, yuv422, 2, 2);
+    printf("YUV422 : ");
+    print_hex(yuv422, 8);
 
     return 0;
 }
