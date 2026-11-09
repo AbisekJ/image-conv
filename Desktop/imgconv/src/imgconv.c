@@ -28,7 +28,6 @@ void rgb888_to_rgb565(const unsigned char *in, unsigned char *out,
     }
 }
 
-
 void rgb888_to_rgb555(const unsigned char *in, unsigned char *out,
                       int width, int height)
 {
@@ -47,7 +46,6 @@ void rgb888_to_rgb555(const unsigned char *in, unsigned char *out,
     }
 }
 
-//For proper rounding - off
 unsigned char clamp(float value)
 {
     if (value < 0.0f) {
@@ -101,13 +99,42 @@ void yuv444_to_yuv422(const unsigned char *in, unsigned char *out,
     for (row = 0; row < height; row++) {
         for (x = 0; x < width; x += 2) {
             int p0 = (row * width + x) * 3;   
-            int p1 = p0 + 3;                 
-            int o  = (row * width + x) * 2;   
+            int p1 = p0 + 3;                  
+            int o  = (row * width + x) * 2; 
 
-            out[o]     = in[p0];                         /* Y0 */
-            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;  /* average U */
-            out[o + 2] = in[p1];                         /* Y1 */
-            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;  /* average V */
+            out[o]     = in[p0];                                  /* Y0 */
+            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;           /* average U */
+            out[o + 2] = in[p1];                                  /* Y1 */
+            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;           /* average V */
+        }
+    }
+}
+
+//Planar arrangement
+void yuv444_to_yuv420(const unsigned char *in, unsigned char *out,
+                      int width, int height)
+{
+    int total   = width * height;
+    int u_start = total;                                /* U plane begins here */
+    int v_start = total + (width / 2) * (height / 2);   /* V plane begins here */
+    int row, x, i;
+
+    /* Y plane pixels */
+    for (i = 0; i < total; i++) {
+        out[i] = in[i * 3];
+    }
+
+    /* U and V planes: average each 2x2 block */
+    for (row = 0; row < height; row += 2) {
+        for (x = 0; x < width; x += 2) {
+            int a = (row * width + x) * 3;   /* top-left     */
+            int b = a + 3;                   /* top-right    */
+            int c = a + width * 3;           /* bottom-left  */
+            int d = c + 3;                   /* bottom-right */
+            int pos = (row / 2) * (width / 2) + (x / 2);
+
+            out[u_start + pos] = (in[a + 1] + in[b + 1] + in[c + 1] + in[d + 1]) / 4;
+            out[v_start + pos] = (in[a + 2] + in[b + 2] + in[c + 2] + in[d + 2]) / 4;
         }
     }
 }
@@ -141,6 +168,11 @@ int main(void)
     yuv444_to_yuv422(yuv, yuv422, 2, 2);
     printf("YUV422 : ");
     print_hex(yuv422, 8);
+
+    unsigned char yuv420[6];
+    yuv444_to_yuv420(yuv, yuv420, 2, 2);
+    printf("YUV420 : ");
+    print_hex(yuv420, 6);
 
     return 0;
 }
