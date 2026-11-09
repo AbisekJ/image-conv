@@ -1,0 +1,8 @@
+# compiled output
+imgconv
+*.o
+*.exe
+
+# test image files
+*.raw
+*.bin
