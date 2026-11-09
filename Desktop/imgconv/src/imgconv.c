@@ -1,14 +1,6 @@
 #include <stdio.h>
-
-/* Print bytes as hex so we can see the result on screen */
-void print_hex(const unsigned char *data, int count)
-{
-    int i;
-    for (i = 0; i < count; i++) {
-        printf("%02X ", data[i]);
-    }
-    printf("\n");
-}
+#include <stdlib.h>
+#include <string.h>
 
 void rgb888_to_rgb565(const unsigned char *in, unsigned char *out,
                       int width, int height)
@@ -100,17 +92,16 @@ void yuv444_to_yuv422(const unsigned char *in, unsigned char *out,
         for (x = 0; x < width; x += 2) {
             int p0 = (row * width + x) * 3;   
             int p1 = p0 + 3;                  
-            int o  = (row * width + x) * 2; 
+            int o  = (row * width + x) * 2;   
 
-            out[o]     = in[p0];                                  /* Y0 */
-            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;           /* average U */
-            out[o + 2] = in[p1];                                  /* Y1 */
-            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;           /* average V */
+            out[o]     = in[p0];                                /* Y0 */
+            out[o + 1] = (in[p0 + 1] + in[p1 + 1]) / 2;         /* average U */
+            out[o + 2] = in[p1];                                /* Y1 */
+            out[o + 3] = (in[p0 + 2] + in[p1 + 2]) / 2;         /* average V */
         }
     }
 }
 
-//Planar arrangement
 void yuv444_to_yuv420(const unsigned char *in, unsigned char *out,
                       int width, int height)
 {
@@ -119,7 +110,7 @@ void yuv444_to_yuv420(const unsigned char *in, unsigned char *out,
     int v_start = total + (width / 2) * (height / 2);   /* V plane begins here */
     int row, x, i;
 
-    /* Y plane pixels */
+    // Y plane
     for (i = 0; i < total; i++) {
         out[i] = in[i * 3];
     }
@@ -139,40 +130,85 @@ void yuv444_to_yuv420(const unsigned char *in, unsigned char *out,
     }
 }
 
+//file operations 
+
+/* Return the size of a file in bytes, or -1 if it cannot be opened. */
+long get_file_size(const char *name)
+{
+    FILE *fp = fopen(name, "rb");  
+    long size;
+
+    if (fp == NULL) {
+        return -1;
+    }
+    fseek(fp, 0, SEEK_END);        
+    size = ftell(fp);               
+    fclose(fp);
+    return size;
+}
+
+/* Read exactly 'size' bytes into buf. Return 1 on success, 0 on failure. */
+int read_file(const char *name, unsigned char *buf, long size)
+{
+    FILE *fp = fopen(name, "rb");
+    size_t count;
+
+    if (fp == NULL) {
+        return 0;
+    }
+    count = fread(buf, 1, (size_t)size, fp);
+    fclose(fp);
+    return count == (size_t)size;
+}
+
+/* Write exactly 'size' bytes from buf. Return 1 on success, 0 on failure. */
+int write_file(const char *name, const unsigned char *buf, long size)
+{
+    FILE *fp = fopen(name, "wb");   
+    size_t count;
+
+    if (fp == NULL) {
+        return 0;
+    }
+    count = fwrite(buf, 1, (size_t)size, fp);
+    fclose(fp);
+    return count == (size_t)size;
+}
+
+#define WIDTH  4
+#define HEIGHT 4
+
 int main(void)
 {
-    /* A tiny 2x2 test image: red, green, blue, white pixels (RGB888) */
-    unsigned char rgb[12] = { 255, 0, 0,   0, 255, 0,   0, 0, 255,   255, 255, 255 };
+    long in_size  = (long)WIDTH * HEIGHT * 3;   /* RGB888 = 3 bytes/pixel */
+    long out_size = (long)WIDTH * HEIGHT * 2;   /* RGB565 = 2 bytes/pixel */
+    unsigned char *in_buf  = malloc(in_size);
+    unsigned char *out_buf = malloc(out_size);
 
-    unsigned char out565[8];
-    rgb888_to_rgb565(rgb, out565, 2, 2);
-    printf("RGB565 : ");
-    print_hex(out565, 8);
+    if (in_buf == NULL || out_buf == NULL) {
+        printf("Error: out of memory\n");
+        free(in_buf);
+        free(out_buf);
+        return 1;
+    }
+    if (!read_file("input.raw", in_buf, in_size)) {
+        printf("Error: cannot read input.raw\n");
+        free(in_buf);
+        free(out_buf);
+        return 1;
+    }
 
-    unsigned char out555[8];
-    rgb888_to_rgb555(rgb, out555, 2, 2);
-    printf("RGB555 : ");
-    print_hex(out555, 8);
+    rgb888_to_rgb565(in_buf, out_buf, WIDTH, HEIGHT);
 
-    unsigned char yuv[12];
-    rgb888_to_yuv444(rgb, yuv, 2, 2);
-    printf("YUV444 : ");
-    print_hex(yuv, 12);
+    if (!write_file("output.raw", out_buf, out_size)) {
+        printf("Error: cannot write output.raw\n");
+        free(in_buf);
+        free(out_buf);
+        return 1;
+    }
 
-    unsigned char back[12];
-    yuv444_to_rgb888(yuv, back, 2, 2);
-    printf("RGB888 : ");
-    print_hex(back, 12);
-
-    unsigned char yuv422[8];
-    yuv444_to_yuv422(yuv, yuv422, 2, 2);
-    printf("YUV422 : ");
-    print_hex(yuv422, 8);
-
-    unsigned char yuv420[6];
-    yuv444_to_yuv420(yuv, yuv420, 2, 2);
-    printf("YUV420 : ");
-    print_hex(yuv420, 6);
-
+    printf("Done: wrote %ld bytes to output.raw\n", out_size);
+    free(in_buf);
+    free(out_buf);
     return 0;
 }
