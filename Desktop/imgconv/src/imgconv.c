@@ -276,6 +276,38 @@ int get_dimension(const char *text, const char *name)
     return value;
 }
 
+// --help and --version
+
+#define VERSION "1.0.0"
+
+void print_version(void)
+{
+    printf("imgconv version %s\n", VERSION);
+}
+
+void print_help(void)
+{
+    print_usage();
+    printf("\nConvert a raw (headerless) image between pixel formats.\n");
+    printf("The input file is always 3 bytes per pixel (rgb888 or packed yuv444).\n");
+    printf("\nModes:\n");
+    printf("  rgb888-to-rgb565   2 bytes per pixel output\n");
+    printf("  rgb888-to-rgb555   2 bytes per pixel output\n");
+    printf("  rgb888-to-yuv444   3 bytes per pixel output\n");
+    printf("  yuv444-to-rgb888   3 bytes per pixel output\n");
+    printf("  yuv444-to-yuv422   packed YUYV output (width must be even)\n");
+    printf("  yuv444-to-yuv420   planar I420 output (width and height must be even)\n");
+    printf("\nOptions:\n");
+    printf("  -w, --width N      image width in pixels  (1 to %d)\n", MAX_DIM);
+    printf("  -H, --height N     image height in pixels (1 to %d)\n", MAX_DIM);
+    printf("  -i, --input FILE   input raw file\n");
+    printf("  -o, --output FILE  output raw file\n");
+    printf("  -h, --help         show this help\n");
+    printf("  -v, --version      show version\n");
+    printf("\nExample:\n");
+    printf("  imgconv rgb888-to-rgb565 -w 640 -H 480 -i in.rgb -o out.565\n");
+}
+
 int main(int argc, char *argv[])
 {
     int mode;
@@ -286,6 +318,18 @@ int main(int argc, char *argv[])
     long file_size, in_size, out_size;
     unsigned char *in_buf, *out_buf;
     int i;
+    
+    /* --help and --version are checked first, wherever they appear */
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_help();
+            return 0;
+        }
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            print_version();
+            return 0;
+        }
+    }
 
     /* 1. a mode must be given and must be known */
     if (argc < 2) {
