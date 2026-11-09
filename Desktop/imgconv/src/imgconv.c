@@ -58,6 +58,7 @@ unsigned char clamp(float value)
     return (unsigned char)(value + 0.5f);
 }
 
+
 void rgb888_to_yuv444(const unsigned char *in, unsigned char *out,
                       int width, int height)
 {
@@ -72,6 +73,24 @@ void rgb888_to_yuv444(const unsigned char *in, unsigned char *out,
         out[i * 3]     = clamp( 0.299f * r + 0.587f * g + 0.114f * b);
         out[i * 3 + 1] = clamp(-0.169f * r - 0.331f * g + 0.500f * b + 128.0f);
         out[i * 3 + 2] = clamp( 0.500f * r - 0.419f * g - 0.081f * b + 128.0f);
+    }
+}
+
+
+void yuv444_to_rgb888(const unsigned char *in, unsigned char *out,
+                      int width, int height)
+{
+    int total = width * height;
+    int i;
+
+    for (i = 0; i < total; i++) {
+        float y = in[i * 3];
+        float u = in[i * 3 + 1] - 128.0f;
+        float v = in[i * 3 + 2] - 128.0f;
+
+        out[i * 3]     = clamp(y + 1.402f * v);
+        out[i * 3 + 1] = clamp(y - 0.344f * u - 0.714f * v);
+        out[i * 3 + 2] = clamp(y + 1.772f * u);
     }
 }
 
@@ -94,6 +113,11 @@ int main(void)
     rgb888_to_yuv444(rgb, yuv, 2, 2);
     printf("YUV444 : ");
     print_hex(yuv, 12);
+
+    unsigned char back[12];
+    yuv444_to_rgb888(yuv, back, 2, 2);
+    printf("RGB888 : ");
+    print_hex(back, 12);
 
     return 0;
 }
