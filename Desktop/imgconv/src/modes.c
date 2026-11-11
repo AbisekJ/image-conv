@@ -1,17 +1,17 @@
 /* modes.c - the list of conversions and the code that picks one */
-#include <string.h>
+#include <stdio.h>
 #include "modes.h"
 #include "image_convert.h"
 
-/* Mode names typed on the command line */
+/* Mode names typed on the command line 
 #define MODE_NAME_RGB888_TO_RGB565   "rgb888-to-rgb565"
 #define MODE_NAME_RGB888_TO_RGB555   "rgb888-to-rgb555"
 #define MODE_NAME_RGB888_TO_YUV444   "rgb888-to-yuv444"
 #define MODE_NAME_YUV444_TO_RGB888   "yuv444-to-rgb888"
 #define MODE_NAME_YUV444_TO_YUV422   "yuv444-to-yuv422"
-#define MODE_NAME_YUV444_TO_YUV420   "yuv444-to-yuv420"
+#define MODE_NAME_YUV444_TO_YUV420   "yuv444-to-yuv420" */
 
-/* Turn the mode text typed by the user into a mode number. */
+/* Turn the mode text typed by the user into a mode number. 
 int get_mode(const char *name)
 {
     if (strcmp(name, MODE_NAME_RGB888_TO_RGB565) == 0) return MODE_RGB888_TO_RGB565;
@@ -21,6 +21,40 @@ int get_mode(const char *name)
     if (strcmp(name, MODE_NAME_YUV444_TO_YUV422) == 0) return MODE_YUV444_TO_YUV422;
     if (strcmp(name, MODE_NAME_YUV444_TO_YUV420) == 0) return MODE_YUV444_TO_YUV420;
     return MODE_UNKNOWN;
+}
+*/
+
+/* Text shown next to each number in the menu */
+#define MODE_TEXT_RGB888_TO_RGB565   "RGB888 to RGB565   (2 bytes per pixel)"
+#define MODE_TEXT_RGB888_TO_RGB555   "RGB888 to RGB555   (2 bytes per pixel)"
+#define MODE_TEXT_RGB888_TO_YUV444   "RGB888 to YUV444   (3 bytes per pixel)"
+#define MODE_TEXT_YUV444_TO_RGB888   "YUV444 to RGB888   (3 bytes per pixel)"
+#define MODE_TEXT_YUV444_TO_YUV422   "YUV444 to YUV422   (packed YUYV, width must be even)"
+#define MODE_TEXT_YUV444_TO_YUV420   "YUV444 to YUV420   (planar I420, width and height must be even)"
+
+/* Print the menu: one number for each conversion. */
+void print_mode_menu(void)
+{
+    printf("\n=============== imgconv - choose a conversion ===============\n");
+    printf("  %d. %s\n", MODE_RGB888_TO_RGB565, MODE_TEXT_RGB888_TO_RGB565);
+    printf("  %d. %s\n", MODE_RGB888_TO_RGB555, MODE_TEXT_RGB888_TO_RGB555);
+    printf("  %d. %s\n", MODE_RGB888_TO_YUV444, MODE_TEXT_RGB888_TO_YUV444);
+    printf("  %d. %s\n", MODE_YUV444_TO_RGB888, MODE_TEXT_YUV444_TO_RGB888);
+    printf("  %d. %s\n", MODE_YUV444_TO_YUV422, MODE_TEXT_YUV444_TO_YUV422);
+    printf("  %d. %s\n", MODE_YUV444_TO_YUV420, MODE_TEXT_YUV444_TO_YUV420);
+    printf("==============================================================\n");
+}
+
+/* YUV422 and YUV420 pair up pixels, so they need an even width. */
+int needs_even_width(int mode)
+{
+    return mode == MODE_YUV444_TO_YUV422 || mode == MODE_YUV444_TO_YUV420;
+}
+
+/* Only YUV420 (2x2 blocks) needs an even height. */
+int needs_even_height(int mode)
+{
+    return mode == MODE_YUV444_TO_YUV420;
 }
 
 /* How many bytes does the output file need for this mode? */

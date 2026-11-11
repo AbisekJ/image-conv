@@ -6,8 +6,7 @@ CC     = gcc
 CFLAGS = -std=c99 -Wall -Wextra -pedantic
 TARGET = imgconv
 
-SRC = src/main.c src/cli.c src/file_io.c src/image_convert.c \
-      src/modes.c src/validation.c
+SRC = src/main.c src/cli.c src/file_io.c src/image_convert.c src/modes.c src/validation.c src/input.c
 OBJ = $(SRC:.c=.o)
 HDR = $(wildcard src/*.h)
 

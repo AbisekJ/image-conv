@@ -6,6 +6,18 @@
 #define NO_OFFSET           0   /* fseek offset: measure from SEEK_END exactly */
 #define BYTE_SIZE           1   /* fread/fwrite item size: one byte at a time  */
 
+/* Return TRUE if the file can be opened for reading (so it exists). */
+int file_exists(const char *path)
+{
+    FILE *file = fopen(path, "rb");
+
+    if (file == NULL) {
+        return FALSE;
+    }
+    fclose(file);
+    return TRUE;
+}
+
 /* Return the size of a file in bytes, or FILE_SIZE_ERROR if it cannot be opened. */
 long get_file_size(const char *path)
 {
