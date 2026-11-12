@@ -28,6 +28,8 @@ void print_help(void)
     printf("  2. Type the image width and height (%d to %d).\n", MIN_DIM, MAX_DIM);
     printf("  3. Type the input file name (it must exist and be width x height x 3 bytes).\n");
     printf("  4. Type the output file name (you are asked before an existing file is overwritten).\n");
+    printf("\nFile extensions: input and output names must end with .rgb for RGB data\n");
+    printf("                 or .yuv for YUV data, depending on the chosen mode.\n");
     printf("\nSizes: yuv444-to-yuv422 needs an even width;\n");
     printf("       yuv444-to-yuv420 needs an even width and height.\n");
 }

@@ -57,10 +57,10 @@ int main(int argc, char *argv[])
     if (image_height == DIM_INVALID) {
         return EXIT_FAILURE;
     }
-    if (!ask_input_path(input_path, image_width, image_height)) {
+    if (!ask_input_path(input_path, image_width, image_height, selected_mode)) {
         return EXIT_FAILURE;
     }
-    if (!ask_output_path(output_path, input_path)) {
+    if (!ask_output_path(output_path, input_path, selected_mode)) {
         return EXIT_FAILURE;
     }
 

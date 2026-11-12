@@ -21,7 +21,9 @@ int  needs_even_height(int mode);
 
 //int  get_mode(const char *name);
 long get_output_size(int mode, int width, int height);
-void convert(int mode, const unsigned char *input, unsigned char *output,
-             int width, int height);
+void convert(int mode, const unsigned char *input, unsigned char *output, int width, int height);
+
+const char *get_input_extension(int mode);
+const char *get_output_extension(int mode);
 
 #endif /* MODES_H */

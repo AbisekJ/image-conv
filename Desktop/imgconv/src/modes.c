@@ -45,6 +45,30 @@ void print_mode_menu(void)
     printf("==============================================================\n");
 }
 
+/* File extensions: .rgb for RGB data, .yuv for YUV data */
+#define EXTENSION_RGB   ".rgb"
+#define EXTENSION_YUV   ".yuv"
+
+/* Extension the INPUT file must have: the three RGB888 modes read RGB data, the rest read YUV. */
+const char *get_input_extension(int mode)
+{
+    if (mode == MODE_RGB888_TO_RGB565 || mode == MODE_RGB888_TO_RGB555 ||
+        mode == MODE_RGB888_TO_YUV444) {
+        return EXTENSION_RGB;
+    }
+    return EXTENSION_YUV;
+}
+
+/* Extension the OUTPUT file must have: RGB565, RGB555 and RGB888 are RGB data, the rest YUV. */
+const char *get_output_extension(int mode)
+{
+    if (mode == MODE_RGB888_TO_RGB565 || mode == MODE_RGB888_TO_RGB555 ||
+        mode == MODE_YUV444_TO_RGB888) {
+        return EXTENSION_RGB;
+    }
+    return EXTENSION_YUV;
+}
+
 /* YUV422 and YUV420 pair up pixels, so they need an even width. */
 int needs_even_width(int mode)
 {
@@ -82,8 +106,7 @@ long get_output_size(int mode, int width, int height)
 }
 
 /* Call the right conversion function for the chosen mode. */
-void convert(int mode, const unsigned char *input, unsigned char *output,
-             int width, int height)
+void convert(int mode, const unsigned char *input, unsigned char *output, int width, int height)
 {
     if (mode == MODE_RGB888_TO_RGB565) {
         rgb888_to_rgb565(input, output, width, height);

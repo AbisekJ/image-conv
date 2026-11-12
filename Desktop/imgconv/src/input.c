@@ -28,7 +28,6 @@
 
 /*
  * Read one line typed by the user into buffer (without the newline).
- * fgets() never writes more than 'size' characters, so the buffer cannot overflow.
  */
 static int read_line(char *buffer, int size)
 {
@@ -161,17 +160,18 @@ int ask_dimension(const char *label, int must_be_even)
     return DIM_INVALID;
 }
 
-/* Ask for the input file name. The file must exist and have the right size. */
-int ask_input_path(char *path, int width, int height)
+/* Ask for the input file name. It needs the right extension, must exist and have the right size. */
+int ask_input_path(char *path, int width, int height, int mode)
 {
     long expected_size = (long)width * height * INPUT_BYTES_PER_PIXEL;
+    const char *extension = get_input_extension(mode);
     int attempt;
 
     for (attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         int result;
         long actual_size;
 
-        printf("Enter input file name: ");
+        printf("Enter input file name (must end with %s): ", extension);
         result = read_line(path, MAX_LINE_LEN);
         if (result == READ_EOF) {
             return FALSE;
@@ -181,6 +181,11 @@ int ask_input_path(char *path, int width, int height)
         }
         if (path[0] == END_OF_STRING) {
             fprintf(stderr, "Error: file name cannot be empty\n");
+            continue;
+        }
+        if (!has_extension(path, extension)) {
+            fprintf(stderr, "Error: input file must have the extension %s for this mode, got '%s'\n",
+                    extension, path);
             continue;
         }
         actual_size = get_file_size(path);
@@ -199,15 +204,16 @@ int ask_input_path(char *path, int width, int height)
     return FALSE;
 }
 
-/* Ask for the output file name. If it already exists, ask before overwriting. */
-int ask_output_path(char *path, const char *input_path)
+/* Ask for the output file name. It needs the right extension; if it exists, ask before overwriting. */
+int ask_output_path(char *path, const char *input_path, int mode)
 {
+    const char *extension = get_output_extension(mode);
     int attempt;
 
     for (attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         int result;
 
-        printf("Enter output file name: ");
+        printf("Enter output file name (must end with %s): ", extension);
         result = read_line(path, MAX_LINE_LEN);
         if (result == READ_EOF) {
             return FALSE;
@@ -217,6 +223,11 @@ int ask_output_path(char *path, const char *input_path)
         }
         if (path[0] == END_OF_STRING) {
             fprintf(stderr, "Error: file name cannot be empty\n");
+            continue;
+        }
+        if (!has_extension(path, extension)) {
+            fprintf(stderr, "Error: output file must have the extension %s for this mode, got '%s'\n",
+                    extension, path);
             continue;
         }
         if (strcmp(path, input_path) == 0) {

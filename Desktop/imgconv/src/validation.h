@@ -11,4 +11,6 @@
 int is_number(const char *text);
 int get_dimension(const char *text, const char *name);
 
+int has_extension(const char *path, const char *extension);
+
 #endif /* VALIDATION_H */

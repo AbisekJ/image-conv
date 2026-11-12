@@ -6,3 +6,6 @@ imgconv
 # test image files
 *.raw
 *.bin
+
+*.rgb
+*.yuv

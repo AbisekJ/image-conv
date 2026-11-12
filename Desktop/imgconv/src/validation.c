@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "validation.h"
 #include "common.h"
+#include <string.h>
+#include <ctype.h>
 
 #define END_OF_STRING       '\0'
 #define DIGIT_FIRST         '0'
@@ -46,4 +48,31 @@ int get_dimension(const char *text, const char *name)
         return DIM_INVALID;
     }
     return value;
+}
+
+
+/*
+ * Return TRUE if path ends with the given extension (for example ".rgb").
+ * Upper/lower case is ignored, so "IMAGE.RGB" is accepted.
+ * A name that is only the extension (".rgb") is rejected, because
+ * a file name must come before the extension.
+ */
+int has_extension(const char *path, const char *extension)
+{
+    size_t path_length = strlen(path);
+    size_t extension_length = strlen(extension);
+    size_t start;
+    size_t index;
+
+    if (path_length <= extension_length) {
+        return FALSE;
+    }
+    start = path_length - extension_length;
+    for (index = 0; index < extension_length; index++) {
+        if (tolower((unsigned char)path[start + index]) !=
+            tolower((unsigned char)extension[index])) {
+            return FALSE;
+        }
+    }
+    return TRUE;
 }

@@ -9,7 +9,7 @@
  * when the user gave up (too many wrong answers or the input ended). */
 int ask_mode(void);
 int ask_dimension(const char *label, int must_be_even);
-int ask_input_path(char *path, int width, int height);
-int ask_output_path(char *path, const char *input_path);
+int ask_input_path(char *path, int width, int height, int mode);
+int ask_output_path(char *path, const char *input_path, int mode);
 
 #endif /* INPUT_H */
